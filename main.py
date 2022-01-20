@@ -12,7 +12,7 @@ from plotly.subplots import make_subplots
 
 def generate_start_dates(start_date, end_date):
     return [{'label': calendar.month_name[d.month], 'value': d.strftime('%Y-%m-%d')}
-            for d in pd.date_range(start_date, end_date, freq='1M')-pd.offsets.MonthBegin(1)]
+            for d in pd.date_range(start_date, end_date, freq='1M') - pd.offsets.MonthBegin(1)]
 
 
 def generate_end_dates(start_date, end_date):
@@ -22,6 +22,12 @@ def generate_end_dates(start_date, end_date):
 
 app = dash.Dash(__name__)
 
+start = datetime.datetime(2021, 1, 1)
+# end = datetime.datetime(2021, 12, 31)
+end = datetime.date.today()
+spy = web.DataReader(['sp500'], 'fred', start, end).dropna()
+btc = web.get_data_yahoo(['BTC-USD'], start, end)['Close']
+
 
 @app.callback(
     Output(component_id='series-graph', component_property='figure'),
@@ -30,22 +36,21 @@ app = dash.Dash(__name__)
     Input(component_id='end-dropdown', component_property='value')
 )
 def generate_chart(start_date, end_date):
-    spy = web.DataReader(['sp500'], 'fred', start_date, end_date).dropna()
-    btc = web.get_data_yahoo(['BTC-USD'], start_date, end_date)['Close']
+    spy_sub = spy[start_date: end_date]
+    btc_sub = btc[start_date: end_date]
+
     figure = make_subplots(specs=[[{"secondary_y": True}]])
     figure.add_trace(
-        go.Scatter(x=spy['sp500'].keys(), y=spy['sp500'].values, name="S&P500"),
+        go.Scatter(x=spy_sub['sp500'].keys(), y=spy_sub['sp500'].values, name="S&P500"),
         secondary_y=False,
     )
     figure.add_trace(
-        go.Scatter(x=btc['BTC-USD'].keys(), y=btc['BTC-USD'].values, name="BTCUSD"),
+        go.Scatter(x=btc_sub['BTC-USD'].keys(), y=btc_sub['BTC-USD'].values, name="BTCUSD"),
         secondary_y=True,
     )
-    return figure, "{:.5f}".format(spy.corrwith(btc['BTC-USD'])[0])
+    return figure, "{:.5f}".format(spy_sub.corrwith(btc_sub['BTC-USD'])[0])
 
 
-start = datetime.datetime(2021, 1, 1)
-end = datetime.datetime(2021, 12, 31)
 # fig = generate_chart(start, end)
 
 app.layout = html.Div(children=[
@@ -84,24 +89,6 @@ app.layout = html.Div(children=[
     html.Label('Correlation'),
     html.Div(id='series-correlation'),
 ])
-
-
-# @app.callback(
-#     Output(component_id='series-correlation', component_property='children'),
-#     Input(component_id='start-dropdown', component_property='value')
-# )
-# def update_output_div(input_value):
-#     return "{:.5f}".format(spy.corrwith(btc['BTC-USD'])[0])
-
-
-# @app.callback(
-#     Output(component_id='series-correlation', component_property='value'),
-#     Input(component_id='my-input', component_property='value')
-# )
-# def calc_correlation():
-#     print(type(spy))
-#     return spy.corrwith(btc['BTC-USD'])[0]
-
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8060)
