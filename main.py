@@ -30,12 +30,11 @@ btc = web.get_data_yahoo(['BTC-USD'], start, end)['Close']
 
 
 @app.callback(
-    Output(component_id='series-graph', component_property='figure'),
+    Output('series-graph', 'figure'),
     Output(component_id='series-correlation', component_property='children'),
-    Input(component_id='start-dropdown', component_property='value'),
-    Input(component_id='end-dropdown', component_property='value')
-)
-def generate_chart(start_date, end_date):
+    Input('graph-date-picker', 'start_date'),
+    Input('graph-date-picker', 'end_date'))
+def update_output(start_date, end_date):
     spy_sub = spy[start_date: end_date]
     btc_sub = btc[start_date: end_date]
 
@@ -51,27 +50,21 @@ def generate_chart(start_date, end_date):
     return figure, "{:.5f}".format(spy_sub.corrwith(btc_sub['BTC-USD'])[0])
 
 
-# fig = generate_chart(start, end)
-
 app.layout = html.Div(children=[
     html.H1(children='Market Correlation Sheet'),
 
-    html.Div(children='''
-        Dash: Pick two securities and time period
-    '''),
-
     html.Div(children=[
-        dcc.Dropdown(
-            id='start-dropdown',
-            options=generate_start_dates(start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d')),
-            value=start.strftime('%Y-%m-%d')
+
+        dcc.DatePickerRange(
+            id='graph-date-picker',
+            display_format="DD-MM-YYYY",
+            min_date_allowed=start,
+            max_date_allowed=end,
+            start_date=start,
+            end_date=end,
         ),
 
-        dcc.Dropdown(
-            id='end-dropdown',
-            options=generate_end_dates(start.strftime('%Y-%m-%d'), end.strftime('%Y-%m-%d')),
-            value=end.strftime('%Y-%m-%d')
-        ),
+        html.Div(id='output-container-date-picker-range'),
     ]),
 
     # dcc.Dropdown(
@@ -84,7 +77,7 @@ app.layout = html.Div(children=[
 
     dcc.Graph(id='series-graph'),
 
-    html.Br(),
+    # html.Br(),
 
     html.Label('Correlation'),
     html.Div(id='series-correlation'),
